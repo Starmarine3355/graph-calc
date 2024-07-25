@@ -25,5 +25,5 @@ cc display.c history.c commands.c ops.c main.c -o graph-calc.exe -lm
 ```
 
 ## Resources
-* Shunting yard algorithm [Wiki](https://en.wikipedia.org/wiki/Shunting_yard_algorithm)
-* Reverse polish notation [Wiki](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
+* [Shunting yard algorithm](https://en.wikipedia.org/wiki/Shunting_yard_algorithm)
+* [Reverse polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
