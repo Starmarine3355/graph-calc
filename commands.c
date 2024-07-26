@@ -18,7 +18,7 @@ void _remove_spaces(char arg[MAX_BUF])
 		arg++; // "arg" is passed by value, does not modify original pointer
 	}
 
-	*(p_char + 1) = '\0';
+	*p_char = '\0';
 }
 
 void _replace_vars(char arg[MAX_BUF])
@@ -54,6 +54,9 @@ struct token _pop(struct token dest[MAX_BUF])
 }
 struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 {
+	fprintf(stderr, "RUN TOKENIZE:\t%s\n", arg);
+	
+
 	int r_bracket_count = 0, l_bracket_count = 0, tok_count = 0, i = 0;
 	while (arg[i] != '\0')
 	{
@@ -65,6 +68,7 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 			tokens[tok_count].type = OPERATOR;
 			tokens[tok_count].symbol = arg[i];
 			tokens[tok_count].priority = get_priority(arg[i]);
+			tokens[tok_count].assoc = get_assoc(arg[i]);
 			tokens[tok_count].arity = get_arity(arg[i]);
 
 			tok_count++;
@@ -95,6 +99,7 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 						tokens[tok_count + 1].type = OPERATOR;
 						tokens[tok_count + 1].symbol = '*';
 						tokens[tok_count + 1].priority = get_priority('*');
+						tokens[tok_count].assoc = get_assoc('*');
 						tokens[tok_count + 1].arity = get_arity('*');
 
 						tokens[tok_count].type = NUMBER;
@@ -162,6 +167,7 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 			tokens[tok_count].type = OPERATOR;
 			tokens[tok_count].symbol = symbol;
 			tokens[tok_count].priority = get_priority(symbol);
+			tokens[tok_count].assoc = get_assoc(symbol);
 			tokens[tok_count].arity = UNARY;
 			
 			tok_count++;
@@ -179,6 +185,13 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 	}
 
 	tokens[tok_count].type = NO_TOK; // "null_terminate" 
+
+
+	for(int i = 0; tokens[i].type != NO_TOK; i++)	
+		fprintf(stderr, "Token %d:\tsymbol: %c | value: %f\n", tokens[i].type, tokens[i].symbol, tokens[i].value);
+	fprintf(stderr, "END TOKENIZE\n");
+	fprintf(stderr, "\n");
+
 	return make_res(0, "");
 }
 
@@ -186,6 +199,8 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 // look up "shunting yard algorithm" (video in README.md) (rpn stands for reverse polish notation)
 struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 {
+	fprintf(stderr, "RUN TOKENS TO RPN:\n");
+
 	struct token null_tok = {NO_TOK};
 	struct token opr_stack[MAX_BUF] = {null_tok};
 	struct token out_queue[MAX_BUF] = {null_tok};
@@ -204,10 +219,11 @@ struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 
 			while (opr_stack[i_stk].type == OPERATOR)
 			{
-				if (opr_stack[i_stk].priority < tokens[i].priority)
+				if (opr_stack[i_stk].priority < tokens[i].priority ||
+				   (opr_stack[i_stk].priority == tokens[i].priority && opr_stack[i_stk].assoc == RIGHT))
 					break;
 
-				_push(out_queue, _pop(opr_stack)); // all ops of higher priority get _pushed to queue (and _popped from stack)
+				_push(out_queue, _pop(opr_stack)); // all ops of higher priority than tokens[i] (or same as tokens[i] but left associated) get _pushed to queue (and _popped from stack)
 				i_stk--; // traverse down the stack
 			}
 			
@@ -247,6 +263,12 @@ struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 
 	for (int i = 0; i < MAX_BUF; i++)
 		tokens[i] = out_queue[i]; // move queue tokens to "tokens"
+	
+	for(int i = 0; tokens[i].type != NO_TOK; i++)	
+		fprintf(stderr, "Token %d:\tsymbol: %c | value: %f\n", tokens[i].type, tokens[i].symbol, tokens[i].value);
+	fprintf(stderr, "END TOKENS TO RPN\n");
+	fprintf(stderr, "\n");
+
 	return make_res(0, "");
 }
 

@@ -44,6 +44,14 @@ int get_priority(char opr)
 	return 4; // functions (e.g sin)
 }
 
+enum associativity get_assoc(char opr)
+{
+	if (opr == '+' || opr == '-' ||
+	    opr == '*' || opr == '/')
+		return LEFT;
+	return RIGHT; // exponentiation, roots and functions
+}
+
 enum opr_type get_arity(char opr)
 {
 	if (opr == '+' || opr == '-')

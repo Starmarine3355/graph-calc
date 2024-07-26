@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdio.h>
-#include "display.h"
 #include "macros.h"
+#include "display.h"
 
 void _erase_screen()
 {

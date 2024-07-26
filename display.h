@@ -15,6 +15,13 @@ struct graph
 	struct point pos; // camera position
 };
 
+enum display_mode
+{
+	NORMAL, // Graph + IOs
+	HELP,	// Help message
+	HISTORY	// History + Config
+};
+
 /* saves axis lines to plot.
  */
 void draw_axis(struct graph *p_plot);

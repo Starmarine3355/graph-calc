@@ -30,4 +30,9 @@ void copy_latest_IOs(enum chunk_type type, char dest[MAX_IO_LINES][MAX_BUF]);
 
 // todo copy_settings
 
+/* opens help.txt and prints its contents to the terminal.
+ * exits program if help.txt is not in executable's directory
+ */
+void print_help();
+
 #endif

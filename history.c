@@ -4,11 +4,9 @@
 #include "macros.h"
 #include "history.h"
 
-/* saves latest input and output to history.bin
- */
 FILE* _get_history()
 {
-	FILE* f_history = fopen("history.bin", "rb+");
+	FILE *f_history = fopen("history.bin", "rb+");
 
 	if (f_history == NULL) // file does not exist
 	{
@@ -150,4 +148,21 @@ void copy_latest_IOs(enum chunk_type type, char dest[MAX_IO_LINES][MAX_BUF])
 			findings++;
 		}
 	}
+}
+
+void copy_settings()
+{
+
+}
+
+void print_help()
+{
+	FILE *f_help = fopen("help.txt", "r");
+	if (f_help == NULL)
+	{
+		fprintf(stderr, "In \"print_help\": Couldn't open \"help.txt\"\n");
+		exit(1);
+	}
+
+	//printf("%s");
 }

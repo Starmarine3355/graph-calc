@@ -27,13 +27,13 @@ void update(void)
 
 	while (1)
 	{
+		fprintf(stderr, "update\n");
 		reset_plot(&plot);
 		draw_axis(&plot);
 
 		res = display(plot, inputs, outputs);
 		if (res.code == 1)
 		{
-			fprintf(stderr, "Error in display: %s\n", res.msg);
 			strcpy(outputs[0], res.msg); 
 			continue;
 		}
@@ -42,6 +42,7 @@ void update(void)
 		strcpy(outputs[0], res.msg);
 		if (res.code == 0)
 		{
+			fprintf(stderr, "saving IO\n");
 			save_to_history(OUTPUT, outputs[0]);
 			save_to_history(INPUT, inputs[0]);
 		}

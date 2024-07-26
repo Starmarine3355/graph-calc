@@ -9,6 +9,11 @@ enum token_type {
 	R_BRACKET
 };
 
+enum associativity {
+	LEFT,
+	RIGHT
+};
+
 enum opr_type {
 	UNARY,
 	BINARY,
@@ -27,6 +32,7 @@ struct token
 	// (inverse functions are capitalized, e.g asin => 'S')
 	char symbol;
 	int priority;
+	enum associativity assoc; // if same priority, determines how expression is read
 	enum opr_type arity; // number of arguments
 };
 
@@ -46,11 +52,15 @@ char is_function(char func[MAX_BUF]);
  */
 int get_priority(char opr);
 
-/* returns "opr_type" for given operator symbol (e.g '*' is a BINARY operation)
+/* returns associativity for given operator symbol (e.g ^ has RIGHT assoc. thus, 3^3^2 is 3^(3^2))
+ */
+enum associativity get_assoc(char opr);
+
+/* returns opr_type for given operator symbol (e.g '*' is a BINARY operation)
  */
 enum opr_type get_arity(char opr);
 
-/* returns a number token after performing an operation of type "opr.type", uses "a" and "b" as operands
+/* returns a number token after performing an operation of type opr.type, uses a and b as operands
  */
 struct token perform_opr(struct token opr, struct token a, struct token b);
 
