@@ -17,25 +17,29 @@ struct graph
 
 enum display_mode
 {
-	NORMAL, // Graph + IOs
-	HELP,	// Help message
-	HISTORY	// History + Config
+	NORMAL,
+	HELP,
+	HISTORY
 };
+
+/* draws a horizontal line
+ */
+void print_line();
 
 /* saves axis lines to plot.
  */
 void draw_axis(struct graph *p_plot);
 
-/* saves a ' ' to all plot indexes.
+/* saves a ' ' to all plot indexes, thus erasing it.
  */
 void reset_plot(struct graph *p_plot);
 
-/* prints graph, I/O box, and the command prompt.
+/* displays normal- (plot, last 5 IOs, prompt), help- (help message, prompt) or history mode (all IOs, prompt)
  * gets input from the user.
  * new input and output is saved to inputs/outputs in the first index and old elements are shifted one index.
  *
  * returns 1 if input is longer than MAX_BUF, else 0
  */
-struct result display(struct graph plot, char inputs[MAX_IO_LINES][MAX_BUF], char outputs[MAX_IO_LINES][MAX_BUF]);
+struct result display(enum display_mode mode, struct graph plot, char inputs[MAX_IO_LINES][MAX_BUF], char outputs[MAX_IO_LINES][MAX_BUF]);
 
 #endif

@@ -3,7 +3,7 @@
 
 #define HEIGHT 51
 #define WIDTH 101
-#define MAX_BUF 81
+#define MAX_BUF 91
 #define MAX_IO_LINES 5
 
 struct result 

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h> // temp
 #include <string.h>
 #include "display.h"
 #include "history.h"
@@ -16,8 +17,11 @@ int main(void)
 void update(void)
 {
 	struct result res;
+	enum display_mode mode = NORMAL;
 
-	struct graph plot = {.scale = 1.5, .pos = {1000, 0}}; // load from history
+	struct graph plot = {.scale = 1.5, .pos = {0, 0}}; 
+
+	// TODO: default here, if possible load from history
 
 	char inputs[MAX_IO_LINES][MAX_BUF] = {"", "", "", "", ""};
 	char outputs[MAX_IO_LINES][MAX_BUF] = {"", "", "", "", ""};
@@ -27,11 +31,10 @@ void update(void)
 
 	while (1)
 	{
-		fprintf(stderr, "update\n");
 		reset_plot(&plot);
 		draw_axis(&plot);
 
-		res = display(plot, inputs, outputs);
+		res = display(mode, plot, inputs, outputs);
 		if (res.code == 1)
 		{
 			strcpy(outputs[0], res.msg); 
@@ -42,18 +45,15 @@ void update(void)
 		strcpy(outputs[0], res.msg);
 		if (res.code == 0)
 		{
-			fprintf(stderr, "saving IO\n");
-			save_to_history(OUTPUT, outputs[0]);
-			save_to_history(INPUT, inputs[0]);
+			save_to_history(INPUT, inputs[0], 0);
+			save_to_history(OUTPUT, outputs[0], 0);
 		}
 
-		// todo return result structs
 		if (strcmp(inputs[0], "help") == 0)
-			strcpy(outputs[0], "Opening \"help\".");
-		if (strcmp(inputs[0], "quit") == 0)
-			strcpy(outputs[0], "Opening \"home\".");
-		if (strcmp(inputs[0], "config") == 0)
-			strcpy(outputs[0], "Opening \"config\".");
-
+			mode = HELP;
+		else if (strcmp(inputs[0], "quit") == 0)
+			mode = NORMAL;
+		else if (strcmp(inputs[0], "his") == 0)
+			mode = HISTORY;
 	}
 }

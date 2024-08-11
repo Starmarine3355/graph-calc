@@ -1,38 +1,41 @@
 #ifndef HISTORY_H
 #define HISTORY_H
 
-#define MAX_STORAGE 65 // 32 IOs, 0 Settings, 1 NO_CHUNK
+// 32 inputs, 32 outputs, 26 variables, 1 null terminator
+#define MAX_STORAGE 91
 
-enum chunk_type {
-	NO_CHUNK, // null-terminator
+enum entry_type {
+	NO_ENTRY, // null terminator
 	INPUT,
 	OUTPUT,
-	SETTING
+	VARIABLE,
 };
 
-struct chunk {
-	enum chunk_type type;
+struct entry {
+	enum entry_type type;
 	char string[MAX_BUF];
+	double value;
 };
 
-/* saves string to history.bin.
- * "chunk_type" specifies if string is input, output or a setting.
- * this makes reading possible.
- *
- * side effect: if storage is > MAX_STORAGE, oldest pair of INPUT and OUTPUT entries is removed.
+/* prints history.bin's contents
  */
-void save_to_history(enum chunk_type type, char string[MAX_BUF]);
+void print_history();
 
-/* copies latest entries of inputs or outputs to dest
- * only allows INPUT and OUTPUT enum
+/* creates an entry struct with input arguments and saves it to history.bin
+ * if history.bin has more than MAX STORAGE entries, the oldest pair of input and output is removed.
  */
-void copy_latest_IOs(enum chunk_type type, char dest[MAX_IO_LINES][MAX_BUF]);
+void save_to_history(enum entry_type type, char string[MAX_BUF], double value);
 
-// todo copy_settings
-
-/* opens help.txt and prints its contents to the terminal.
- * exits program if help.txt is not in executable's directory
+/* copies latest 5 input or output strings to array dest (does not accept other entry types)
  */
-void print_help();
+void copy_latest_IOs(enum entry_type type, char dest[MAX_IO_LINES][MAX_BUF]);
+
+/* sets variable to value
+ */
+void set_variable(char _name, double value);
+
+/* gets variable's value
+ */
+double get_variable(char name);
 
 #endif

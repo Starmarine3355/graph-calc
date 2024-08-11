@@ -2,7 +2,7 @@
 #define OPS_H
 
 enum token_type {
-	NO_TOK, // null-terminator
+	NO_TOK, // null terminator
 	NUMBER,
 	OPERATOR,
 	L_BRACKET,

@@ -30,7 +30,7 @@ char is_function(char func[MAX_BUF])
 		return 't';
 	if (strcmp(func, "atan") == 0)
 		return 'T';
-	return 1; // could not find function
+	return 0; // could not find function
 }
 
 int get_priority(char opr)
@@ -70,7 +70,6 @@ struct token perform_opr(struct token opr, struct token a, struct token b)
 	if (a.type == NO_TOK)
 		a.value = 0.0; // only matters for mixed operations
 
-	fprintf(stderr, "Operands are: %f\t%f\n", a.value, b.value);
 	switch (opr.symbol)
 	{
 		case '+':

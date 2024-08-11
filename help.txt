@@ -1,0 +1,35 @@
+# Terminal Graphic Calculator #
+
+note: Use `quit` to return to normal mode
+
+usage: option "argument"	(note: only certain options require arguments)
+valid options:
+	* help			(shows this help window)
+	* quit			(returns to main window)
+	* his			(shows history and settings)
+	* load "var num"	(loads output "num" to "var", look up "load usage")
+	* calc "expression"	(calculates expression, look up "calc/plot usage")
+	* plot "expression"	(plots expression, look up "calc/plot usage")
+
+load usage:
+	* wip
+
+calc/plot usage:
+	* as argument, use valid expressions 	(explanatory error message is given otherwise)
+	* space between option and argument 	(e.g `calc "1+1"` is valid, `calc"1+1"` is not)
+	* quotes around argument is optional 	(e.g `calc 1 + 1` and `calc "1 + 1"` are equivalent)
+	* spaces in expression is optional 	(e.g `calc 1+1` and `calc 1 + 1` are equivalent)
+	* brackets after math function 		(e.g `calc sin(3.14)` is valid, `calc sin 3.14` is not)
+	* closing brackets are optional 	(e.g `calc 5(32(5` and `calc 5(32(5))` are equivalent)
+	* plot wip
+
+history:
+	* old inputs and outputs (not including errors or unimportant messages) get saved to history.bin in the same directory
+	* max storage is 32 inputs and outputs
+
+debugging: many vital steps of the program are outputted to stderr
+if the program fails, you can identify problems with the following shell command
+
+`./graph-calc.exe 2> stderr.txt` (might be different on different systems)
+
+this will output errors to `stderr.txt` (if you find a bug please contact the author starmarine3355)

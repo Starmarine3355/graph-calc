@@ -1,14 +1,35 @@
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "macros.h"
+#include "history.h"
 #include "display.h"
 
+// erases screen using escape sequence
 void _erase_screen()
 {
-	printf("%c[2J", 27); // look up escape sequences (27 in ASCII is ESC) 
+	printf("%c[2J", 27);
 }
 
-void _print_line()
+// prints help.txt's contents, if the file is not found the program is exited
+void _print_help()
+{
+	char c;
+	FILE *f_help = fopen("help.txt", "r");
+	if (f_help == NULL)
+	{
+		fprintf(stderr, "In \"print_help\": Couldn't open \"help.txt\"\n");
+		exit(1);
+	}
+
+	while ((c = getc(f_help)) != EOF)
+		putchar(c);
+
+	printf("\n");
+	fclose(f_help);
+}
+
+void print_line()
 {
 	for (int i = 0; i < WIDTH; i++)
 		printf("_");
@@ -42,36 +63,59 @@ void reset_plot(struct graph *p_plot)
 	}
 }
 
-struct result display(struct graph plot, char inputs[MAX_IO_LINES][MAX_BUF], char outputs[MAX_IO_LINES][MAX_BUF])
-{
-	// todo display different modes using enums as another argument
+/* TODO:
+ *	display different modes
+ *	normal
+ *	help
+ *	config
+ *
+ */
 
+
+struct result display(enum display_mode mode, struct graph plot, char inputs[MAX_IO_LINES][MAX_BUF], char outputs[MAX_IO_LINES][MAX_BUF])
+{
 	struct result res;
 	res.code = 0;
 
 	_erase_screen();
 
-	// plot graph
-	for (int i = 0; i < HEIGHT; i++)
+	switch (mode)
 	{
-		for (int j = 0; j < WIDTH; j++)
-		{
-			printf("%c", plot.stream[i][j]);
-		}
-		printf("\n");
-	}
-	
-	// print previous I/Os
-	_print_line();
-	for (int i = MAX_IO_LINES - 1; i >= 0; i--)
-	{
-		printf("| (%d) %s\n", i + 1, inputs[i]);
-		printf("| (~) %s\n", outputs[i]);
-	}
-	_print_line();
+		case NORMAL:
+			// plot graph
+			for (int i = 0; i < HEIGHT; i++)
+			{
+				for (int j = 0; j < WIDTH; j++)
+				{
+					printf("%c", plot.stream[i][j]);
+				}
+				printf("\n");
+			}
 
-	// iterate I/Os
-	for (int i = MAX_IO_LINES - 1; i > 0; i--)
+			// print previous IOs
+			print_line();
+			for (int i = MAX_IO_LINES - 1; i >= 0; i--)
+			{
+				printf("| (%d) %s\n", i + 1, inputs[i]);
+				printf("| (~) %s\n", outputs[i]);
+			}
+			print_line();
+					
+			break;
+		case HELP:
+			print_line();
+			_print_help();
+			print_line();
+			break;
+		case HISTORY:
+			print_line();
+			print_history();
+			print_line();
+			break;
+	}
+
+	// iterate IOs
+	for (int i = MAX_IO_LINES - 1; i >= 0; i--)
 	{
 		strcpy(inputs[i], inputs[i - 1]);
 		strcpy(outputs[i], outputs[i - 1]);

@@ -1,31 +1,49 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "macros.h"
+#include "commands.h"
+#include "history.h"
 #include "ops.h"
 
+// modifies input string and removes all spaces
 void _remove_spaces(char arg[MAX_BUF])
 {
 	char *p_char = arg;
 
 	while (*arg != '\0')
 	{
-		if (*arg != ' ') // copies non-spaces, thus spaces are replaced or after null-terminator
+		if (*arg != ' ')
 		{
-			*p_char = *arg;
+			*p_char = *arg; // copies non-spaces to arg's memory address
 			p_char++;
 		}
-		arg++; // "arg" is passed by value, does not modify original pointer
+		arg++;
 	}
 
-	*p_char = '\0';
+	*p_char = '\0'; // null termination
 }
 
-void _replace_vars(char arg[MAX_BUF])
+// prints out a tokens stack and queue to stderr, this allows a user to read the internal changes in _tokens_to_rpn and _calculate_rpn 
+void _print_sq(char *msg, struct token stack[MAX_BUF], struct token queue[MAX_BUF])
 {
-	// wip
+	fprintf(stderr, "DEBUG: after %s:\n", msg);
+
+	fprintf(stderr, "\tStack: ");
+	for(int i = 0; stack[i].type != NO_TOK; i++)	
+		fprintf(stderr, "{type: %d, symbol: %c, value: %.3f}\t", stack[i].type, stack[i].symbol, stack[i].value);
+	
+	if (queue[0].type != NO_TOK) // only output stack
+	{
+		fprintf(stderr, "\n\tQueue: ");
+		for(int i = 0; queue[i].type != NO_TOK; i++)	
+			fprintf(stderr, "{type: %d, symbol: %c, value: %.3f}\t", queue[i].type, queue[i].symbol, queue[i].value);
+	}
+
+	fprintf(stderr, "\n\n");
 }
 
+// push token to the top of dest
 void _push(struct token dest[MAX_BUF], struct token tok)
 {
 	struct token null_tok = {NO_TOK};
@@ -33,10 +51,11 @@ void _push(struct token dest[MAX_BUF], struct token tok)
 	while (dest[i].type != NO_TOK)
 		i++;
 
-	dest[i] = tok; // move "tok" to top of "dest"
+	dest[i] = tok; // move tok to top of dest
 	dest[i + 1] = null_tok;
 }
 
+// pop (remove) and return token on the top of dest
 struct token _pop(struct token dest[MAX_BUF])
 {
 	struct token null_tok = {NO_TOK};
@@ -46,23 +65,22 @@ struct token _pop(struct token dest[MAX_BUF])
 		i++;
 
 	if (i == 0)
-		return null_tok; // returns null-token if stack is empty
+		return null_tok; // returns null token if stack is empty
 
 	ret_tok = dest[i - 1]; 
-	dest[i - 1] = null_tok; // pop token on the top of "dest"
+	dest[i - 1] = null_tok; // pop token on the top of dest (null termination)
 	return ret_tok; // return removed token
 }
+
+// arg is made into tokens structs (numbers, operators and brackets) and filled to tokens, the last index has a null token
 struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 {
-	fprintf(stderr, "RUN TOKENIZE:\t%s\n", arg);
-	
-
 	int r_bracket_count = 0, l_bracket_count = 0, tok_count = 0, i = 0;
 	while (arg[i] != '\0')
 	{
 		if (is_operator(arg[i]))
 		{
-			if (tokens[tok_count - 1].type == OPERATOR)
+			if (tok_count - 1 >= 0 && tokens[tok_count - 1].type == OPERATOR)
 				return make_res(1, "ERROR in \"_tokenize\": Two operators cannot be next to each other");
 			
 			tokens[tok_count].type = OPERATOR;
@@ -75,9 +93,9 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 		}
 		else if (is_number(arg[i]) || arg[i] == '.')
 		{
-			int decimals = 0;
+			int decimals = 0; // only one decimal is allowed
 			int i_num = 1;
-			char a_num[MAX_BUF] = {arg[i]};
+			char num_string[MAX_BUF] = {arg[i]}; // arg[i] is already confirmed to be a number
 			
 			if (arg[i] == '.')
 				decimals++;
@@ -88,43 +106,43 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 
 				if (is_number(arg[i]) || (arg[i] == '.' && decimals == 0))
 				{
-					a_num[i_num++] = arg[i]; // add next digit to number string
-					if (arg[i] == '.') // only 1 decimal point allowed
+					num_string[i_num++] = arg[i]; // add next digit or decimal to number string
+					if (arg[i] == '.')
 						decimals++;
 				}
-				else if (arg[i] == '(') // "hidden" '*' before brackets (e.g 5(3+2) => 5*(3+2))
+				else if (arg[i] == '(' || (arg[i] >= 'a' && arg[i] <= 'z')) // hidden muliplication (e.g 5(3+2) --> 5*(3+2) or 5x --> 5*x)
 				{
 					if (arg[i + 1] != ')') // does not apply if brackets surround no numbers (e.g 5()+3)
 					{
 						tokens[tok_count + 1].type = OPERATOR;
 						tokens[tok_count + 1].symbol = '*';
 						tokens[tok_count + 1].priority = get_priority('*');
-						tokens[tok_count].assoc = get_assoc('*');
+						tokens[tok_count + 1].assoc = get_assoc('*');
 						tokens[tok_count + 1].arity = get_arity('*');
 
 						tokens[tok_count].type = NUMBER;
-						tokens[tok_count].value = atof(a_num); // convert number string
+						tokens[tok_count].value = atof(num_string);
 
-						tok_count += 2; // extra '*' operator is added
+						tok_count += 2; // increment with 2 because of the multiplication
 					}
 					else 
 					{
 						tokens[tok_count].type = NUMBER;
-						tokens[tok_count].value = atof(a_num); // convert number string
+						tokens[tok_count].value = atof(num_string);
 
 						tok_count++;
 					}		
 
-					i--;
+					i--; // the bracket will be skipped in the next iteration otherwise
 					break;
 				}
 				else if (is_operator(arg[i]) || arg[i] == ')' || arg[i] == '\0')
 				{
 					tokens[tok_count].type = NUMBER;
-					tokens[tok_count].value = atof(a_num); // convert number string
+					tokens[tok_count].value = atof(num_string);
 					
 					tok_count++;
-					i--;
+					i--; // similar reason as above
 					break;
 				}
 				else
@@ -141,65 +159,72 @@ struct result _tokenize(struct token tokens[MAX_BUF], char arg[MAX_BUF])
 			tokens[tok_count++].type = R_BRACKET;
 			r_bracket_count++;
 		}
-		else
+		else // if function or variable
 		{
-			int i_opr = 1;
-			char a_opr[MAX_BUF] = {arg[i++]};
+			int i_func = 1;
+			char func_string[MAX_BUF] = {arg[i]}; // arg[i] is start of function
 			char symbol;
 
-			while (1)
+			// check for a single letter (variable)
+			if ((arg[i] >= 'a' && arg[i] <= 'z') && (arg[i + 1] < 'a' || arg[i + 1] > 'z'))
 			{
-				if (arg[i] == '(') // function name ends with '(' (e.g sin(...) )
-					break;
-				else if (is_operator(arg[i]) || is_number(arg[i]) ||
-					 arg[i] == ')' || arg[i] == '\0')
+				fprintf(stderr, "variable %c = %.3f\n", arg[i], get_variable(arg[i]));
+				tokens[tok_count].type = NUMBER;
+				tokens[tok_count].value = get_variable(arg[i]);
+			}
+			else // no single letter means a function
+			{
+				while (1)  // function name ends with '(' (e.g sin(...) )
 				{
-					return make_res(1, "ERROR in \"_tokenize\": Unexpected character when reading function");
-				}
+					i++;
+					if (arg[i] == '(')
+						break;
+					if (is_operator(arg[i]) || is_number(arg[i]) || arg[i] == ')' || arg[i] == '\0')
+						return make_res(1, "ERROR in \"_tokenize\": Unexpected character when reading function");
 
-				a_opr[i_opr++] = arg[i++]; // fill until '(' is found
+					func_string[i_func++] = arg[i]; // fill until '(' is found
+				}
+	
+				symbol = is_function(func_string);
+				if (!symbol)
+					return make_res(1, "ERROR in \"_tokenize\": Unknown function");
+			
+				tokens[tok_count].type = OPERATOR;
+				tokens[tok_count].symbol = symbol;
+				tokens[tok_count].priority = get_priority(symbol);
+				tokens[tok_count].assoc = get_assoc(symbol);
+				tokens[tok_count].arity = UNARY;
+
+				i--; // similar reason as above
 			}
 
-			symbol = is_function(a_opr);
-			if (symbol == 1)
-				return make_res(1, "ERROR in \"_tokenize\": Unknown function");
-			
-			tokens[tok_count].type = OPERATOR;
-			tokens[tok_count].symbol = symbol;
-			tokens[tok_count].priority = get_priority(symbol);
-			tokens[tok_count].assoc = get_assoc(symbol);
-			tokens[tok_count].arity = UNARY;
-			
 			tok_count++;
-			i--;
 		}
 
 		i++;
 	}
 
-	// fill in missing right brackets (e.g "5(3(3+3" => "5(3(3+3))" )
+	// fill in missing right brackets (e.g 5(3(3+3 -> 5(3(3+3)) )
 	for (i = 0; i < l_bracket_count - r_bracket_count; i++)
 	{
 		tokens[tok_count].type = R_BRACKET;
 		tok_count++;
 	}
 
-	tokens[tok_count].type = NO_TOK; // "null_terminate" 
+	tokens[tok_count].type = NO_TOK; // null termination
 
-
+	fprintf(stderr, "DEBUG: \"_tokenize\" is called with argument %s\n\tOutput: ", arg);
 	for(int i = 0; tokens[i].type != NO_TOK; i++)	
-		fprintf(stderr, "Token %d:\tsymbol: %c | value: %f\n", tokens[i].type, tokens[i].symbol, tokens[i].value);
-	fprintf(stderr, "END TOKENIZE\n");
-	fprintf(stderr, "\n");
+		fprintf(stderr, "{type: %d, symbol: %c, value: %.3f}\t", tokens[i].type, tokens[i].symbol, tokens[i].value);
+	fprintf(stderr, "\n\n");
 
 	return make_res(0, "");
 }
 
-
-// look up "shunting yard algorithm" (video in README.md) (rpn stands for reverse polish notation)
+// modifies input token array so that its current expression is converted to reverse polish notation (RPN). function is inspired by the shunting yard algorithm. result.code is 0 if input is OK, else it is 1
 struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 {
-	fprintf(stderr, "RUN TOKENS TO RPN:\n");
+	fprintf(stderr, "DEBUG: \"_tokens_to_rpn\" is called:\n");
 
 	struct token null_tok = {NO_TOK};
 	struct token opr_stack[MAX_BUF] = {null_tok};
@@ -209,7 +234,10 @@ struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 	while (tokens[i].type != NO_TOK)
 	{
 		if (tokens[i].type == NUMBER)
-			_push(out_queue, tokens[i]); // get number to queue
+		{
+			_push(out_queue, tokens[i]);
+			_print_sq("number is pushed to queue", opr_stack, out_queue);
+		}
 		else if (tokens[i].type == OPERATOR)
 		{
 			int i_stk = 0;
@@ -217,20 +245,26 @@ struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 				i_stk++; // find the top of the stack
 			i_stk--; // do not read the null token
 
-			while (opr_stack[i_stk].type == OPERATOR)
+			while (i_stk >= 0 && opr_stack[i_stk].type == OPERATOR)
 			{
 				if (opr_stack[i_stk].priority < tokens[i].priority ||
 				   (opr_stack[i_stk].priority == tokens[i].priority && opr_stack[i_stk].assoc == RIGHT))
 					break;
 
-				_push(out_queue, _pop(opr_stack)); // all ops of higher priority than tokens[i] (or same as tokens[i] but left associated) get _pushed to queue (and _popped from stack)
+				_push(out_queue, _pop(opr_stack)); // all operations of higher priority than tokens[i] (or same as tokens[i] but left associated) get popped from stack then pushed to the queue
 				i_stk--; // traverse down the stack
+				
+				_print_sq("operator is popped from stack & pushed to queue", opr_stack, out_queue);
 			}
 			
-			_push(opr_stack, tokens[i]); // get operator to stack
+			_push(opr_stack, tokens[i]);
+			_print_sq("operator is pushed to stack", opr_stack, out_queue);
 		}
 		else if (tokens[i].type == L_BRACKET)
-			_push(opr_stack, tokens[i]); // get left bracket to stack
+		{
+			_push(opr_stack, tokens[i]);
+			_print_sq("left bracket is pushed to stack", opr_stack, out_queue);
+		}
 		else if (tokens[i].type == R_BRACKET)
 		{
 			int i_stk = 0;
@@ -238,16 +272,18 @@ struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 				i_stk++; // find the top of the stack
 			i_stk--; // do not read the null token
 
-			while (opr_stack[i_stk].type != L_BRACKET && i_stk >= 0)
+			while (i_stk >= 0 && opr_stack[i_stk].type != L_BRACKET)
 			{
-				_push(out_queue, _pop(opr_stack)); // ops between brackets get _pushed to queue
-				i_stk--; // traverse down the stack
+				_push(out_queue, _pop(opr_stack));
+				i_stk--;
+				_print_sq("operator between brackets is popped from stack & pushed to queue", opr_stack, out_queue);
 			}
 
 			if (opr_stack[i_stk].type != L_BRACKET)
 				return make_res(1, "ERROR in \"_tokens_to_rpn\": Did not find left bracket");
 
-			_pop(opr_stack); // brackets are not needed in rpn
+			_pop(opr_stack); // brackets are not needed in an rpn expression
+			_print_sq("left bracket is popped from stack", opr_stack, out_queue);
 		}
 		else
 			return make_res(1, "ERROR in \"_tokens_to_rpn\": Unexpected token");
@@ -256,55 +292,49 @@ struct result _tokens_to_rpn(struct token tokens[MAX_BUF])
 
 	i = 0;
 	while (opr_stack[i].type != NO_TOK)
-	{
-		_push(out_queue, opr_stack[i]); // remaining ops get moved to queue
-		i++;
-	}
+		i++; // find the top of the stack
+	while (i >= 0)
+		_push(out_queue, opr_stack[i--]); // remaining operations in the stack get moved to queue
 
 	for (int i = 0; i < MAX_BUF; i++)
-		tokens[i] = out_queue[i]; // move queue tokens to "tokens"
+		tokens[i] = out_queue[i]; // move tokens in queue to input array
 	
+	fprintf(stderr, "DEBUG: \"_tokens_to_rpn\" is finished:\n\tOutput: ");
 	for(int i = 0; tokens[i].type != NO_TOK; i++)	
-		fprintf(stderr, "Token %d:\tsymbol: %c | value: %f\n", tokens[i].type, tokens[i].symbol, tokens[i].value);
-	fprintf(stderr, "END TOKENS TO RPN\n");
-	fprintf(stderr, "\n");
+		fprintf(stderr, "{type: %d, symbol: %c, value: %.3f}\t", tokens[i].type, tokens[i].symbol, tokens[i].value);
+	fprintf(stderr, "\n\n");
 
-	return make_res(0, "");
+	return make_res(0, ""); // input is OK
 }
 
-	/* ERRORS to check
-	 *	* L_Brackets with out R_Bracket (e.g "5(32(4") (Is feature, skip tokens of type L_Bracket)
-	 */
-
+// TODO: might be public with plotting feature
+// takes input array with tokens and calculates its expression (this must be written in RPN). the first token in the input array (tokens[0]) is set to the expression's value. result.code is 0 if input is OK, else it is 1
 struct result _calculate_rpn(struct token tokens[MAX_BUF])
 {
-	for(int i = 0; tokens[i].type != NO_TOK; i++)	
-		fprintf(stderr, "Token %d:\tsymbol: %c | value: %f\n", tokens[i].type, tokens[i].symbol, tokens[i].value);
-	fprintf(stderr, "\n");
+	fprintf(stderr, "DEBUG: \"_calculate_rpn\" is called:\n");
 
 	struct token null_tok = {NO_TOK};
+	struct token empty_queue[MAX_BUF] = {null_tok}; // for debugging purposes
 	struct token out_stack[MAX_BUF] = {null_tok};
-	struct result res;
 	int i = 0;
 
 	while (tokens[i].type != NO_TOK)
 	{
-		fprintf(stderr, "NEW Token %d:\tsymbol: %c | value: %f\n", tokens[i].type, tokens[i].symbol, tokens[i].value);
-
 		if (tokens[i].type == NUMBER)
+		{
 			_push(out_stack, tokens[i]);
+			_print_sq("number is pushed to stack", out_stack, empty_queue);
+		}
 		else if (tokens[i].type == OPERATOR)
 		{
-			struct token res, a, b; // b is first on the stack, a is second. thus b is popped first (e.g 5-3 => 3, 5, -) 
-			b = _pop(out_stack); // if _pop can't pop, it returns null token
+			struct token res, a, b;
+			b = _pop(out_stack);
 			if (b.type == NO_TOK)
 				return make_res(1, "ERROR in \"_calculate_rpn\": Number expected after an operator");
 
-			fprintf(stderr, "Opr arity is %d: UNARY is %d\n", tokens[i].arity, UNARY);
-			if (tokens[i].arity != UNARY) // i.e BINARY and MIX (UNARY and BINARY opr)
+			if (tokens[i].arity != UNARY) // operator takes two operands (or is mixed)
 			{
 				a = _pop(out_stack);
-				fprintf(stderr, "token a is %f\n", a.value);
 				if (a.type == NO_TOK && tokens[i].arity != MIX)
 					return make_res(1, "ERROR in \"_calculate_rpn\": Two numbers expected after a binary operator");
 			}
@@ -313,23 +343,25 @@ struct result _calculate_rpn(struct token tokens[MAX_BUF])
 			if (res.type == NO_TOK)
 				return make_res(1, "ERROR in \"_calculate_rpn\": Unexpected operator");
 				
-			fprintf(stderr, "Result after '%c' opr: %f\n", tokens[i].symbol, res.value);
 			_push(out_stack, res); 
+
+			char dmsg[64];
+			sprintf(dmsg, "'%c' operator (arity type: %d) is performed on stack", tokens[i].symbol, tokens[i].arity);
+			_print_sq(dmsg, out_stack, empty_queue);
 		}
 		else
 			return make_res(1, "ERROR in \"_calculate_rpn\": Unexpected token");
 
 		i++;
 	}
-	
-	fprintf(stderr, "Switching [0]s, ");
-	fprintf(stderr, "Token %d:\tsymbol: %c | value: %f\n", tokens[0].type, tokens[0].symbol, tokens[0].value);
 
+	fprintf(stderr, "DEBUG: \"_calculate_rpn\" is finished:\n\tOutput: %f\n\n", out_stack[0].value);
+	
 	tokens[0] = out_stack[0];
-	res.code = 0;
-	return res;
+	return make_res(0, "");
 }
 
+// read .h file
 struct result process_input(char _input[MAX_BUF])
 {
 	char input[MAX_BUF];
@@ -339,22 +371,20 @@ struct result process_input(char _input[MAX_BUF])
 	struct token tokens[MAX_BUF];
 	struct result res;
 
-	char *tok = strtok(input, " ");
-	if (tok != NULL)
+	char *input_tok = strtok(input, " ");
+	if (input_tok != NULL)
 	{
-		strcpy(option, tok);
-		tok = strtok(NULL, "\"");
-		if (tok != NULL)
-			strcpy(arg, tok);
+		strcpy(option, input_tok);
+		input_tok = strtok(NULL, "");
+		if (input_tok != NULL)
+			strcpy(arg, input_tok);
 	}
 	else
 		strcpy(option, _input);
 
 	if (strcmp(option, "calc") == 0)
 	{
-		// move to future calc function
 		_remove_spaces(arg);
-		_replace_vars(arg); // wip, important that SINGLE chars get converted (sin is a func)
 
 		res = _tokenize(tokens, arg); 
 		if (res.code)
@@ -364,21 +394,39 @@ struct result process_input(char _input[MAX_BUF])
 		if (res.code)
 			return res;
 
-		res = _calculate_rpn(tokens); // modifies tokens, [0] is final value (NUMBER token)
+		res = _calculate_rpn(tokens);
 		if (res.code)
-			return res;
+		return res;
 
+		set_variable('a', tokens[0].value); // set answer variable
 		sprintf(output, "%f", tokens[0].value);
 		res = make_res(0, output);
 	} 
 	else if (strcmp(option, "plot") == 0)
-		res = make_res(0, "plotting");
+	{
+		res = make_res(1, "plotting");
+		// TODO
+	}
+	else if (strcmp(option, "load") == 0)
+	{
+		char name = arg[0];
+
+		strtok(arg, " "); // e.g load a 5, 'a' is skipped so that the next call returns '5'
+		char *value = strtok(NULL, " ");
+
+		if (name < 'a' || name > 'z')
+			return make_res(1, "ERROR in \"process_input\": Variable is not lowercase or not from the English alphabet.");
+		
+		set_variable(name, atof(value));
+		sprintf(output, "%.3f --> %c", atof(value), name);
+		res = make_res(1, output);
+	}
 	else if (strcmp(option, "help") == 0)
-		res = make_res(0, "Opening \"help\"");
+		res = make_res(1, "Opening \"help\"");
 	else if (strcmp(option, "quit") == 0)
-		res = make_res(0, "Opening \"main\"");
-	else if (strcmp(option, "config") == 0)
-		res = make_res(0, "Opening \"config\"");
+		res = make_res(1, "Opening \"main\"");
+	else if (strcmp(option, "his") == 0)
+		res = make_res(1, "Opening \"history\"");
 	else
 		res = make_res(1, "ERROR in \"process_input\": Not a valid option. Type \"help\" for more info.");
 	
